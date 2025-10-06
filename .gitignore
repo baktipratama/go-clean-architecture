@@ -54,6 +54,7 @@ logs/
 # Temporary files
 tmp/
 temp/
+api
 
 #AI
 .claude

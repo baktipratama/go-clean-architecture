@@ -362,22 +362,6 @@ go test ./internal/repository/
 6. **Add Routes** in `cmd/api/router.go`
 7. **Update Container** in `cmd/api/container.go` for dependency injection
 
-## 🐳 Docker Support
-
-*Coming soon - Docker containerization for easy deployment*
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## 🔍 Clean Architecture Benefits
 
 This example implementation demonstrates:
