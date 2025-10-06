@@ -55,10 +55,6 @@ logs/
 tmp/
 temp/
 
-# Application specific
-api
-cmd/api/api
-
 #AI
 .claude
 .serena
