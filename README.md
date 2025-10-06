@@ -25,19 +25,149 @@ internal/
 migrations/        # Database migrations
 ```
 
-## 🚀 Features
+## 🏛️ Clean Architecture Implementation
 
-This example demonstrates:
+This repository demonstrates how Clean Architecture principles are implemented in Go:
 
-- **Clean Architecture**: Separation of concerns with clear dependency boundaries
-- **User Management**: Complete CRUD operations for user entities  
-- **PostgreSQL Support**: Production-ready database with migrations
-- **RESTful API**: HTTP endpoints following REST conventions
-- **Dependency Injection**: Clean dependency management with container pattern
-- **Database Migrations**: Automated schema management
-- **Environment Configuration**: Flexible configuration via environment variables
-- **Testing Examples**: Unit tests showing how to test each layer
-- **Repository Pattern**: Interface-based data access layer
+### 🔄 Dependency Rule
+The core principle where dependencies point inward - outer layers depend on inner layers, never the reverse:
+
+```
+cmd/api (Framework & Drivers) 
+    ↓ depends on
+internal/handler (Interface Adapters)
+    ↓ depends on  
+internal/usecase (Application Business Rules)
+    ↓ depends on
+internal/repository (Interface - Enterprise Business Rules)
+```
+
+### 🎯 Layer Separation
+
+**1. Data Layer (`internal/repository/`) - "Where we save and get data"**
+- **Repository** = Data storage manager - handles saving/loading data from database
+- Contains the `User` entity and `UserRepositoryInterface`
+- Like a librarian who knows how to find and store books
+- No dependencies on external frameworks or databases
+- Pure business logic that could work in any context
+
+**2. Business Logic Layer (`internal/usecase/`) - "What our app actually does"**
+- **Usecase** = Business rules engine - implements what the application should do
+- Contains `UserUsecase` implementing business workflows  
+- Like a manager who makes decisions and coordinates work
+- Orchestrates data flow between entities and repositories
+- Depends only on repository interfaces, not implementations
+
+**3. Presentation Layer (`internal/handler/`, `internal/dto/`) - "How users interact with our app"**
+- **Handler** = Request processor - converts web requests into business operations
+- **DTO** = Data messenger - carries data between different parts of the app
+- Like a translator who speaks both "web language" and "business language"
+- HTTP handlers transform web requests to use case inputs
+- No business logic - pure data transformation
+
+**4. Frameworks & Drivers (`cmd/api/`)**
+- Contains framework-specific code (HTTP server, database connections)
+- Configuration management and dependency injection
+- Database migrations and connection setup
+- Entry point that wires everything together
+
+### 🔌 Dependency Inversion
+
+**Interface Definitions**: Repository interfaces are defined in the business layer but implemented in the infrastructure layer:
+
+```go
+// Defined in internal/repository (inner layer)
+type UserRepositoryInterface interface {
+    Create(ctx context.Context, user *User) error
+    GetByID(ctx context.Context, id uuid.UUID) (*User, error)
+    // ...
+}
+
+// Implemented in internal/repository (same layer, different file)
+type UserRepositoryImpl struct {
+    db *sql.DB  // External dependency
+}
+```
+
+**Dependency Injection**: Dependencies are injected from the outermost layer:
+
+```go
+// cmd/api/container.go
+func NewContainer() *Container {
+    // Infrastructure layer creates concrete implementations
+    db := ConnectDatabase(&config.Database)
+    userRepo := repository.NewUserRepository(db)
+    
+    // Business layer receives interfaces
+    userUsecase := usecase.NewUserUsecase(userRepo)  // userRepo implements UserRepositoryInterface
+    userHandler := handler.NewUserHandler(userUsecase)
+    
+    return &Container{
+        UserHandler: userHandler,
+    }
+}
+```
+
+### 🧪 Testability
+
+Each layer can be tested independently:
+
+**Repository Tests**: Use SQL mocks to test data access logic without a real database
+```go
+func TestUserRepositoryImpl_Create(t *testing.T) {
+    db, mock, err := sqlxmock.Newx()
+    repo := &UserRepositoryImpl{db: db.DB}
+    
+    mock.ExpectExec("INSERT INTO users...").WillReturnResult(...)
+    err := repo.Create(ctx, user)
+    // Test database interaction logic
+}
+```
+
+**Use Case Tests**: Mock repository interfaces to test business logic
+```go
+func TestUserUsecase_CreateUser(t *testing.T) {
+    mockRepo := &MockUserRepository{}
+    usecase := NewUserUsecase(mockRepo)
+    
+    mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
+    err := usecase.CreateUser(ctx, dto)
+    // Test business logic without database
+}
+```
+
+**Handler Tests**: Mock use cases to test HTTP handling
+```go
+func TestUserHandler_CreateUser(t *testing.T) {
+    mockUsecase := &MockUserUsecase{}
+    handler := NewUserHandler(mockUsecase)
+    
+    mockUsecase.On("CreateUser", mock.Anything, mock.Anything).Return(nil)
+    // Test HTTP request/response handling
+}
+```
+
+### 📁 Directory Structure Benefits
+
+```
+internal/
+├── dto/           # Data contracts (no business logic)
+├── handler/       # HTTP adapters (framework concerns)
+├── repository/    # Data access contracts & implementations
+└── usecase/       # Pure business logic
+
+cmd/api/           # Application composition & framework setup
+├── main.go        # Entry point
+├── config.go      # Configuration management
+├── database.go    # Infrastructure setup
+└── container.go   # Dependency injection
+```
+
+This structure ensures:
+- **Screaming Architecture**: Directory names reveal what the application does, not what framework it uses
+- **Plugin Architecture**: Database, web framework, etc. are plugins to the business logic
+- **Framework Independence**: Business logic doesn't depend on Go-specific frameworks
+- **Database Independence**: Can switch from PostgreSQL to MongoDB by changing only the repository implementation
 
 ## 📋 Prerequisites
 
