@@ -192,7 +192,7 @@ func TestUserHandler_GetUser(t *testing.T) {
 		mockUsecase := new(MockUserUsecase)
 		handler := NewUserHandler(mockUsecase)
 
-		mockUsecase.On("GetUser", mock.Anything, userID).Return((*dto.UserResponse)(nil), usecase.ErrInvalidInput)
+		mockUsecase.On("GetUser", mock.Anything, userID).Return((*dto.UserResponse)(nil), usecase.ErrUserNotFound)
 
 		request := httptest.NewRequest(http.MethodGet, "/users/"+userID.String(), nil)
 		request = mux.SetURLVars(request, map[string]string{"id": userID.String()})

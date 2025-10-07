@@ -3,33 +3,20 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"time"
+
+	"go-clean-code/internal/domain"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
-type User struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-var (
-	ErrUserNotFound = errors.New("user not found")
-	ErrUserExists   = errors.New("user already exists")
-)
-
 type UserRepositoryInterface interface {
-	Create(ctx context.Context, user *User) error
-	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
-	GetByEmail(ctx context.Context, email string) (*User, error)
-	Update(ctx context.Context, user *User) error
+	Create(ctx context.Context, user *domain.User) error
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	GetByEmail(ctx context.Context, email string) (*domain.User, error)
+	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, id uuid.UUID) error
-	List(ctx context.Context, limit, offset int) ([]*User, error)
+	List(ctx context.Context, limit, offset int) ([]*domain.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -42,7 +29,7 @@ func NewUserRepository(db *sql.DB) *UserRepositoryImpl {
 	}
 }
 
-func (r *UserRepositoryImpl) Create(ctx context.Context, user *User) error {
+func (r *UserRepositoryImpl) Create(ctx context.Context, user *domain.User) error {
 	query := `
 		INSERT INTO users (id, name, email, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)`
@@ -50,21 +37,21 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, user *User) error {
 	_, err := r.db.ExecContext(ctx, query, user.ID, user.Name, user.Email, user.CreatedAt, user.UpdatedAt)
 	if err != nil {
 		if isUniqueConstraintError(err) {
-			return ErrUserExists
+			return domain.NewConflictError("user already exists", domain.ErrUserAlreadyExists)
 		}
-		return err
+		return domain.NewInternalError("failed to create user", err)
 	}
 
 	return nil
 }
 
-func (r *UserRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
+func (r *UserRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	query := `
 		SELECT id, name, email, created_at, updated_at
 		FROM users
 		WHERE id = $1`
 
-	user := &User{}
+	user := &domain.User{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.Name,
@@ -75,21 +62,21 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*User, 
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrUserNotFound
+			return nil, domain.NewNotFoundError("user not found", domain.ErrUserNotFound)
 		}
-		return nil, err
+		return nil, domain.NewInternalError("failed to get user by ID", err)
 	}
 
 	return user, nil
 }
 
-func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*User, error) {
+func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
 		SELECT id, name, email, created_at, updated_at
 		FROM users
 		WHERE email = $1`
 
-	user := &User{}
+	user := &domain.User{}
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Name,
@@ -100,15 +87,15 @@ func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*Use
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrUserNotFound
+			return nil, domain.NewNotFoundError("user not found by email", domain.ErrUserNotFound)
 		}
-		return nil, err
+		return nil, domain.NewInternalError("failed to get user by email", err)
 	}
 
 	return user, nil
 }
 
-func (r *UserRepositoryImpl) Update(ctx context.Context, user *User) error {
+func (r *UserRepositoryImpl) Update(ctx context.Context, user *domain.User) error {
 	query := `
 		UPDATE users
 		SET name = $2, email = $3, updated_at = $4
@@ -117,18 +104,18 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, user *User) error {
 	result, err := r.db.ExecContext(ctx, query, user.ID, user.Name, user.Email, user.UpdatedAt)
 	if err != nil {
 		if isUniqueConstraintError(err) {
-			return ErrUserExists
+			return domain.NewConflictError("email already in use", domain.ErrEmailAlreadyUsed)
 		}
-		return err
+		return domain.NewInternalError("failed to update user", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return domain.NewInternalError("failed to get rows affected", err)
 	}
 
 	if rowsAffected == 0 {
-		return ErrUserNotFound
+		return domain.NewNotFoundError("user not found for update", domain.ErrUserNotFound)
 	}
 
 	return nil
@@ -139,22 +126,22 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uuid.UUID) error {
 
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return err
+		return domain.NewInternalError("failed to delete user", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return domain.NewInternalError("failed to get rows affected", err)
 	}
 
 	if rowsAffected == 0 {
-		return ErrUserNotFound
+		return domain.NewNotFoundError("user not found for deletion", domain.ErrUserNotFound)
 	}
 
 	return nil
 }
 
-func (r *UserRepositoryImpl) List(ctx context.Context, limit, offset int) ([]*User, error) {
+func (r *UserRepositoryImpl) List(ctx context.Context, limit, offset int) ([]*domain.User, error) {
 	query := `
 		SELECT id, name, email, created_at, updated_at
 		FROM users
@@ -163,13 +150,13 @@ func (r *UserRepositoryImpl) List(ctx context.Context, limit, offset int) ([]*Us
 
 	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewInternalError("failed to list users", err)
 	}
 	defer rows.Close()
 
-	var users []*User
+	var users []*domain.User
 	for rows.Next() {
-		user := &User{}
+		user := &domain.User{}
 		err := rows.Scan(
 			&user.ID,
 			&user.Name,
@@ -178,13 +165,13 @@ func (r *UserRepositoryImpl) List(ctx context.Context, limit, offset int) ([]*Us
 			&user.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewInternalError("failed to scan user", err)
 		}
 		users = append(users, user)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, domain.NewInternalError("error iterating rows", err)
 	}
 
 	return users, nil

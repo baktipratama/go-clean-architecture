@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"go-clean-code/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +30,7 @@ func TestUserRepositoryImpl_Create(t *testing.T) {
 	repo := &UserRepositoryImpl{db: db.DB}
 	ctx := context.Background()
 
-	user := &User{
+	user := &domain.User{
 		ID:        uuid.New(),
 		Name:      "John Doe",
 		Email:     "john@example.com",
@@ -52,7 +54,7 @@ func TestUserRepositoryImpl_Create(t *testing.T) {
 			WillReturnError(&testError{msg: "duplicate key value violates unique constraint"})
 
 		err := repo.Create(ctx, user)
-		assert.Equal(t, ErrUserExists, err)
+		assert.True(t, domain.IsConflictError(err))
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -66,7 +68,7 @@ func TestUserRepositoryImpl_GetByID(t *testing.T) {
 	ctx := context.Background()
 
 	userID := uuid.New()
-	user := &User{
+	user := &domain.User{
 		ID:        userID,
 		Name:      "John Doe",
 		Email:     "john@example.com",
@@ -96,7 +98,7 @@ func TestUserRepositoryImpl_GetByID(t *testing.T) {
 			WillReturnError(sql.ErrNoRows)
 
 		foundUser, err := repo.GetByID(ctx, userID)
-		assert.Equal(t, ErrUserNotFound, err)
+		assert.True(t, domain.IsNotFoundError(err))
 		assert.Nil(t, foundUser)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -110,7 +112,7 @@ func TestUserRepositoryImpl_Update(t *testing.T) {
 	repo := &UserRepositoryImpl{db: db.DB}
 	ctx := context.Background()
 
-	user := &User{
+	user := &domain.User{
 		ID:        uuid.New(),
 		Name:      "John Smith",
 		Email:     "john.smith@example.com",
@@ -133,7 +135,7 @@ func TestUserRepositoryImpl_Update(t *testing.T) {
 			WillReturnResult(sqlxmock.NewResult(0, 0))
 
 		err := repo.Update(ctx, user)
-		assert.Equal(t, ErrUserNotFound, err)
+		assert.True(t, domain.IsNotFoundError(err))
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -164,7 +166,7 @@ func TestUserRepositoryImpl_Delete(t *testing.T) {
 			WillReturnResult(sqlxmock.NewResult(0, 0))
 
 		err := repo.Delete(ctx, userID)
-		assert.Equal(t, ErrUserNotFound, err)
+		assert.True(t, domain.IsNotFoundError(err))
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }

@@ -3,18 +3,22 @@ package usecase
 import (
 	"context"
 	"errors"
-	"time"
 
+	"go-clean-code/internal/domain"
 	"go-clean-code/internal/dto"
 	"go-clean-code/internal/repository"
 
 	"github.com/google/uuid"
 )
 
+// Usecase level errors for backward compatibility with tests
 var (
 	ErrInvalidInput = errors.New("invalid input")
 	ErrEmailExists  = errors.New("email already exists")
+	ErrUserNotFound = errors.New("user not found")
 )
+
+
 
 type UserUsecaseInterface interface {
 	CreateUser(ctx context.Context, req dto.CreateUserRequest) (*dto.UserResponse, error)
@@ -35,25 +39,19 @@ func NewUserUsecase(userRepo repository.UserRepositoryInterface) *UserUsecase {
 }
 
 func (u *UserUsecase) CreateUser(ctx context.Context, req dto.CreateUserRequest) (*dto.UserResponse, error) {
-	if req.Name == "" || req.Email == "" {
-		return nil, ErrInvalidInput
+	// Use domain entity to create user with validation
+	user, err := domain.NewUser(req.Name, req.Email)
+	if err != nil {
+		return nil, domain.NewValidationError("invalid user input", err)
 	}
 
+	// Check if email already exists
 	existingUser, err := u.userRepo.GetByEmail(ctx, req.Email)
-	if err != nil && !errors.Is(err, repository.ErrUserNotFound) {
+	if err != nil && !domain.IsNotFoundError(err) {
 		return nil, err
 	}
 	if existingUser != nil {
-		return nil, ErrEmailExists
-	}
-
-	now := time.Now()
-	user := &repository.User{
-		ID:        uuid.New(),
-		Name:      req.Name,
-		Email:     req.Email,
-		CreatedAt: now,
-		UpdatedAt: now,
+		return nil, domain.NewConflictError("email already in use", domain.ErrEmailAlreadyUsed)
 	}
 
 	if err := u.userRepo.Create(ctx, user); err != nil {
@@ -86,21 +84,26 @@ func (u *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req dto.Upda
 		return nil, err
 	}
 
+	// Use domain entity methods for validation and updates
 	if req.Name != "" {
-		user.Name = req.Name
-		user.UpdatedAt = time.Now()
+		if err := user.UpdateName(req.Name); err != nil {
+			return nil, domain.NewValidationError("invalid name", err)
+		}
 	}
 
 	if req.Email != "" {
+		// Check if email already exists for another user
 		existingUser, err := u.userRepo.GetByEmail(ctx, req.Email)
-		if err != nil && !errors.Is(err, repository.ErrUserNotFound) {
+		if err != nil && !domain.IsNotFoundError(err) {
 			return nil, err
 		}
 		if existingUser != nil && existingUser.ID != id {
-			return nil, ErrEmailExists
+			return nil, domain.NewConflictError("email already in use by another user", domain.ErrEmailAlreadyUsed)
 		}
-		user.Email = req.Email
-		user.UpdatedAt = time.Now()
+		
+		if err := user.UpdateEmail(req.Email); err != nil {
+			return nil, domain.NewValidationError("invalid email", err)
+		}
 	}
 
 	if err := u.userRepo.Update(ctx, user); err != nil {

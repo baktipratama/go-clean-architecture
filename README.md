@@ -1,4 +1,4 @@
-# Go Clean Code - User Management API
+# Go Clean Architecture - User Management API
 
 **Example implementation of a backend API using Clean Architecture principles in Go**
 
@@ -184,7 +184,7 @@ This structure ensures:
 
 2. **Install dependencies**
    ```bash
-   go mod download
+   make deps
    ```
 
 3. **Set up environment variables**
@@ -195,7 +195,7 @@ This structure ensures:
 
 4. **Build the application**
    ```bash
-   go build -o api cmd/api/*.go
+   make build
    ```
 
 ## ⚙️ Configuration
@@ -230,13 +230,26 @@ DB_SSLMODE=disable
 
 ## 🏃‍♂️ Running the Application
 
-### Running with PostgreSQL
+### Quick Start with Makefile
+```bash
+# Set up development environment (copies .env.example to .env if needed)
+make dev-setup
+
+# Run the server
+make run
+
+# Or build and run the binary
+make run-binary
+```
+
+### Manual Setup (Alternative)
 ```bash
 # Make sure PostgreSQL is running and accessible
 go run cmd/api/*.go
 
 # Or using the built binary
-./api
+make build
+./bin/api
 ```
 
 The server will start on `http://localhost:8081` (or the port specified in `SERVER_PORT`).
@@ -323,17 +336,23 @@ migrate -path migrations -database "postgres://user:password@localhost/dbname?ss
 
 ## 🧪 Testing
 
-Run the test suite:
+Run the test suite using Makefile:
 
 ```bash
 # Run all tests
-go test ./...
+make test
 
 # Run tests with coverage
-go test -cover ./...
+make test-coverage
 
 # Run tests with verbose output
-go test -v ./...
+make test-verbose
+```
+
+Manual testing commands:
+```bash
+# Run all tests
+go test ./...
 
 # Run specific test files
 go test ./internal/handler/
@@ -371,6 +390,39 @@ This example implementation demonstrates:
 - **Independence of UI**: UI can change without changing business rules
 - **Independence of Database**: Business rules are not bound to the database
 - **Independence of External Agency**: Business rules don't know about the outside world
+
+## 🚀 Quick Commands
+
+The project includes a Makefile for common development tasks:
+
+```bash
+# Development setup
+make dev-setup          # Install dependencies and create .env file
+make run                # Run the server
+make build              # Build the application binary
+make test               # Run tests
+make clean              # Clean build artifacts
+
+# Code quality
+make fmt                # Format code
+make vet                # Vet code
+make lint               # Run linter (requires golangci-lint)
+
+# Help
+make help               # Show all available commands
+```
+
+### Environment Variables
+
+You can override default environment variables when running commands:
+
+```bash
+# Run on different port
+make run SERVER_PORT=8080
+
+# Run with different database
+make run DB_HOST=mydb.example.com DB_NAME=production_db
+```
 
 ## 🛠️ Built With
 

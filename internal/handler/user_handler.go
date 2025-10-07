@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"go-clean-code/internal/domain"
 	"go-clean-code/internal/dto"
 	"go-clean-code/internal/usecase"
 
@@ -22,6 +23,31 @@ func NewUserHandler(userUsecase usecase.UserUsecaseInterface) *UserHandler {
 	}
 }
 
+// handleError handles domain errors and maps them to appropriate HTTP responses
+func (h *UserHandler) handleError(w http.ResponseWriter, err error) {
+	switch err {
+	case usecase.ErrInvalidInput:
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	case usecase.ErrEmailExists:
+		http.Error(w, err.Error(), http.StatusConflict)
+	case usecase.ErrUserNotFound:
+		http.Error(w, err.Error(), http.StatusNotFound)
+	default:
+		switch {
+		case domain.IsValidationError(err):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case domain.IsNotFoundError(err):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		case domain.IsConflictError(err):
+			http.Error(w, err.Error(), http.StatusConflict)
+		case domain.IsInternalError(err):
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		default:
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+}
+}
+
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -31,14 +57,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userUsecase.CreateUser(r.Context(), req)
 	if err != nil {
-		switch err {
-		case usecase.ErrInvalidInput:
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		case usecase.ErrEmailExists:
-			http.Error(w, err.Error(), http.StatusConflict)
-		default:
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
+		h.handleError(w, err)
 		return
 	}
 
@@ -57,7 +76,7 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userUsecase.GetUser(r.Context(), id)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		h.handleError(w, err)
 		return
 	}
 
@@ -81,12 +100,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userUsecase.UpdateUser(r.Context(), id, req)
 	if err != nil {
-		switch err {
-		case usecase.ErrEmailExists:
-			http.Error(w, err.Error(), http.StatusConflict)
-		default:
-			http.Error(w, "User not found", http.StatusNotFound)
-		}
+		h.handleError(w, err)
 		return
 	}
 
@@ -103,7 +117,7 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.userUsecase.DeleteUser(r.Context(), id); err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		h.handleError(w, err)
 		return
 	}
 
@@ -116,7 +130,7 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	users, err := h.userUsecase.ListUsers(r.Context(), limit, offset)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		h.handleError(w, err)
 		return
 	}
 
