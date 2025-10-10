@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"go-clean-code/internal/domain"
 	"go-clean-code/internal/dto"
+	"go-clean-code/internal/entities"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -18,28 +18,28 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserRepository) Create(ctx context.Context, user *domain.User) error {
+func (m *MockUserRepository) Create(ctx context.Context, user *entities.User) error {
 	args := m.Called(ctx, user)
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.User, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.User), args.Error(1)
+	return args.Get(0).(*entities.User), args.Error(1)
 }
 
-func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
 	args := m.Called(ctx, email)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.User), args.Error(1)
+	return args.Get(0).(*entities.User), args.Error(1)
 }
 
-func (m *MockUserRepository) Update(ctx context.Context, user *domain.User) error {
+func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) error {
 	args := m.Called(ctx, user)
 	return args.Error(0)
 }
@@ -49,9 +49,9 @@ func (m *MockUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) List(ctx context.Context, limit, offset int) ([]*domain.User, error) {
+func (m *MockUserRepository) List(ctx context.Context, limit, offset int) ([]*entities.User, error) {
 	args := m.Called(ctx, limit, offset)
-	return args.Get(0).([]*domain.User), args.Error(1)
+	return args.Get(0).([]*entities.User), args.Error(1)
 }
 
 func TestUserUsecase_CreateUser(t *testing.T) {
@@ -66,8 +66,8 @@ func TestUserUsecase_CreateUser(t *testing.T) {
 			Email: "john@example.com",
 		}
 
-		mockRepo.On("GetByEmail", ctx, req.Email).Return((*domain.User)(nil), domain.NewNotFoundError("user not found by email", domain.ErrUserNotFound))
-		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.User")).Return(nil)
+		mockRepo.On("GetByEmail", ctx, req.Email).Return((*entities.User)(nil), entities.NewNotFoundError("user not found by email", entities.ErrUserNotFound))
+		mockRepo.On("Create", ctx, mock.AnythingOfType("*entities.User")).Return(nil)
 
 		result, err := usecase.CreateUser(ctx, req)
 
@@ -90,7 +90,7 @@ func TestUserUsecase_CreateUser(t *testing.T) {
 
 		result, err := usecase.CreateUser(ctx, req)
 
-		assert.True(t, domain.IsValidationError(err))
+		assert.True(t, entities.IsValidationError(err))
 		assert.Nil(t, result)
 	})
 
@@ -103,7 +103,7 @@ func TestUserUsecase_CreateUser(t *testing.T) {
 			Email: "john@example.com",
 		}
 
-		existingUser := &domain.User{
+		existingUser := &entities.User{
 			ID:    uuid.New(),
 			Name:  "Existing User",
 			Email: req.Email,
@@ -113,7 +113,7 @@ func TestUserUsecase_CreateUser(t *testing.T) {
 
 		result, err := usecase.CreateUser(ctx, req)
 
-		assert.True(t, domain.IsConflictError(err))
+		assert.True(t, entities.IsConflictError(err))
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -127,7 +127,7 @@ func TestUserUsecase_GetUser(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		usecase := NewUserUsecase(mockRepo)
 
-		user := &domain.User{
+		user := &entities.User{
 			ID:    userID,
 			Name:  "John Doe",
 			Email: "john@example.com",
@@ -149,11 +149,11 @@ func TestUserUsecase_GetUser(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		usecase := NewUserUsecase(mockRepo)
 
-		mockRepo.On("GetByID", ctx, userID).Return((*domain.User)(nil), domain.ErrUserNotFound)
+		mockRepo.On("GetByID", ctx, userID).Return((*entities.User)(nil), entities.ErrUserNotFound)
 
 		result, err := usecase.GetUser(ctx, userID)
 
-		assert.Equal(t, domain.ErrUserNotFound, err)
+		assert.Equal(t, entities.ErrUserNotFound, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -167,7 +167,7 @@ func TestUserUsecase_UpdateUser(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		usecase := NewUserUsecase(mockRepo)
 
-		existingUser := &domain.User{
+		existingUser := &entities.User{
 			ID:        userID,
 			Name:      "John Doe",
 			Email:     "john@example.com",
@@ -180,7 +180,7 @@ func TestUserUsecase_UpdateUser(t *testing.T) {
 		}
 
 		mockRepo.On("GetByID", ctx, userID).Return(existingUser, nil)
-		mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.User")).Return(nil)
+		mockRepo.On("Update", ctx, mock.AnythingOfType("*entities.User")).Return(nil)
 
 		result, err := usecase.UpdateUser(ctx, userID, req)
 
@@ -195,7 +195,7 @@ func TestUserUsecase_UpdateUser(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		usecase := NewUserUsecase(mockRepo)
 
-		existingUser := &domain.User{
+		existingUser := &entities.User{
 			ID:        userID,
 			Name:      "John Doe",
 			Email:     "john@example.com",
@@ -208,8 +208,8 @@ func TestUserUsecase_UpdateUser(t *testing.T) {
 		}
 
 		mockRepo.On("GetByID", ctx, userID).Return(existingUser, nil)
-		mockRepo.On("GetByEmail", ctx, req.Email).Return((*domain.User)(nil), domain.NewNotFoundError("user not found by email", domain.ErrUserNotFound))
-		mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.User")).Return(nil)
+		mockRepo.On("GetByEmail", ctx, req.Email).Return((*entities.User)(nil), entities.NewNotFoundError("user not found by email", entities.ErrUserNotFound))
+		mockRepo.On("Update", ctx, mock.AnythingOfType("*entities.User")).Return(nil)
 
 		result, err := usecase.UpdateUser(ctx, userID, req)
 
@@ -224,7 +224,7 @@ func TestUserUsecase_UpdateUser(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		usecase := NewUserUsecase(mockRepo)
 
-		existingUser := &domain.User{
+		existingUser := &entities.User{
 			ID:        userID,
 			Name:      "John Doe",
 			Email:     "john@example.com",
@@ -232,7 +232,7 @@ func TestUserUsecase_UpdateUser(t *testing.T) {
 			UpdatedAt: time.Now(),
 		}
 
-		otherUser := &domain.User{
+		otherUser := &entities.User{
 			ID:    uuid.New(),
 			Name:  "Other User",
 			Email: "other@example.com",
@@ -247,7 +247,7 @@ func TestUserUsecase_UpdateUser(t *testing.T) {
 
 		result, err := usecase.UpdateUser(ctx, userID, req)
 
-		assert.True(t, domain.IsConflictError(err))
+		assert.True(t, entities.IsConflictError(err))
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -273,11 +273,11 @@ func TestUserUsecase_DeleteUser(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		usecase := NewUserUsecase(mockRepo)
 
-		mockRepo.On("Delete", ctx, userID).Return(domain.ErrUserNotFound)
+		mockRepo.On("Delete", ctx, userID).Return(entities.ErrUserNotFound)
 
 		err := usecase.DeleteUser(ctx, userID)
 
-		assert.Equal(t, domain.ErrUserNotFound, err)
+		assert.Equal(t, entities.ErrUserNotFound, err)
 		mockRepo.AssertExpectations(t)
 	})
 }
@@ -285,7 +285,7 @@ func TestUserUsecase_DeleteUser(t *testing.T) {
 func TestUserUsecase_ListUsers(t *testing.T) {
 	ctx := context.Background()
 
-	users := []*domain.User{
+	users := []*entities.User{
 		{
 			ID:    uuid.New(),
 			Name:  "John Doe",
@@ -321,7 +321,7 @@ func TestUserUsecase_ListUsers(t *testing.T) {
 		mockRepo := new(MockUserRepository)
 		usecase := NewUserUsecase(mockRepo)
 
-		mockRepo.On("List", ctx, 10, 0).Return([]*domain.User{}, nil)
+		mockRepo.On("List", ctx, 10, 0).Return([]*entities.User{}, nil)
 
 		result, err := usecase.ListUsers(ctx, 0, -1)
 

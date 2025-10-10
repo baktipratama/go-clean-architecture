@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"go-clean-code/internal/domain"
 	"go-clean-code/internal/dto"
+	"go-clean-code/internal/entities
 	"go-clean-code/internal/usecase"
 
-	"github.com/gorilla/mux"
 	"github.com/google/uuid"
+
+
 )
 
 type UserHandler struct {
@@ -34,17 +35,17 @@ func (h *UserHandler) handleError(w http.ResponseWriter, err error) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 	default:
 		switch {
-		case domain.IsValidationError(err):
+		case entities.IsValidationError(err):
 			http.Error(w, err.Error(), http.StatusBadRequest)
-		case domain.IsNotFoundError(err):
+		case entities.IsNotFoundError(err):
 			http.Error(w, err.Error(), http.StatusNotFound)
-		case domain.IsConflictError(err):
+		case entities.IsConflictError(err):
 			http.Error(w, err.Error(), http.StatusConflict)
-		case domain.IsInternalError(err):
+		case entities.IsInternalError(err):
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
-		}
+	}
 }
 }
 
@@ -137,4 +138,3 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
 }
-

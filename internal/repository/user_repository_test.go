@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"go-clean-code/internal/domain"
+	"go-clean-code/internal/entities"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +30,7 @@ func TestUserRepositoryImpl_Create(t *testing.T) {
 	repo := &UserRepositoryImpl{db: db.DB}
 	ctx := context.Background()
 
-	user := &domain.User{
+	user := &entities.User{
 		ID:        uuid.New(),
 		Name:      "John Doe",
 		Email:     "john@example.com",
@@ -54,7 +54,7 @@ func TestUserRepositoryImpl_Create(t *testing.T) {
 			WillReturnError(&testError{msg: "duplicate key value violates unique constraint"})
 
 		err := repo.Create(ctx, user)
-		assert.True(t, domain.IsConflictError(err))
+		assert.True(t, entities.IsConflictError(err))
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -68,7 +68,7 @@ func TestUserRepositoryImpl_GetByID(t *testing.T) {
 	ctx := context.Background()
 
 	userID := uuid.New()
-	user := &domain.User{
+	user := &entities.User{
 		ID:        userID,
 		Name:      "John Doe",
 		Email:     "john@example.com",
@@ -98,7 +98,7 @@ func TestUserRepositoryImpl_GetByID(t *testing.T) {
 			WillReturnError(sql.ErrNoRows)
 
 		foundUser, err := repo.GetByID(ctx, userID)
-		assert.True(t, domain.IsNotFoundError(err))
+		assert.True(t, entities.IsNotFoundError(err))
 		assert.Nil(t, foundUser)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -112,7 +112,7 @@ func TestUserRepositoryImpl_Update(t *testing.T) {
 	repo := &UserRepositoryImpl{db: db.DB}
 	ctx := context.Background()
 
-	user := &domain.User{
+	user := &entities.User{
 		ID:        uuid.New(),
 		Name:      "John Smith",
 		Email:     "john.smith@example.com",
@@ -135,7 +135,7 @@ func TestUserRepositoryImpl_Update(t *testing.T) {
 			WillReturnResult(sqlxmock.NewResult(0, 0))
 
 		err := repo.Update(ctx, user)
-		assert.True(t, domain.IsNotFoundError(err))
+		assert.True(t, entities.IsNotFoundError(err))
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -166,7 +166,7 @@ func TestUserRepositoryImpl_Delete(t *testing.T) {
 			WillReturnResult(sqlxmock.NewResult(0, 0))
 
 		err := repo.Delete(ctx, userID)
-		assert.True(t, domain.IsNotFoundError(err))
+		assert.True(t, entities.IsNotFoundError(err))
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -183,7 +183,7 @@ func TestIsUniqueConstraintError(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "should detect unique constraint error", 
+			name:     "should detect unique constraint error",
 			err:      &testError{msg: "unique constraint violation"},
 			expected: true,
 		},
@@ -223,7 +223,7 @@ func TestContainsSubstring(t *testing.T) {
 		{
 			name:     "should find substring at beginning",
 			s:        "world hello",
-			substr:   "world", 
+			substr:   "world",
 			expected: true,
 		},
 		{
@@ -247,7 +247,7 @@ func TestContainsSubstring(t *testing.T) {
 		{
 			name:     "should handle empty string",
 			s:        "",
-			substr:   "world", 
+			substr:   "world",
 			expected: false,
 		},
 	}

@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"go-clean-code/internal/domain"
 	"go-clean-code/internal/dto"
+	"go-clean-code/internal/entities"
+	
 	"go-clean-code/internal/repository"
 
 	"github.com/google/uuid"
@@ -17,8 +18,6 @@ var (
 	ErrEmailExists  = errors.New("email already exists")
 	ErrUserNotFound = errors.New("user not found")
 )
-
-
 
 type UserUsecaseInterface interface {
 	CreateUser(ctx context.Context, req dto.CreateUserRequest) (*dto.UserResponse, error)
@@ -40,18 +39,18 @@ func NewUserUsecase(userRepo repository.UserRepositoryInterface) *UserUsecase {
 
 func (u *UserUsecase) CreateUser(ctx context.Context, req dto.CreateUserRequest) (*dto.UserResponse, error) {
 	// Use domain entity to create user with validation
-	user, err := domain.NewUser(req.Name, req.Email)
+	user, err := entities.NewUser(req.Name, req.Email)
 	if err != nil {
-		return nil, domain.NewValidationError("invalid user input", err)
+		return nil, entities.NewValidationError("invalid user input", err)
 	}
 
 	// Check if email already exists
 	existingUser, err := u.userRepo.GetByEmail(ctx, req.Email)
-	if err != nil && !domain.IsNotFoundError(err) {
+	if err != nil && !entities.IsNotFoundError(err) {
 		return nil, err
 	}
 	if existingUser != nil {
-		return nil, domain.NewConflictError("email already in use", domain.ErrEmailAlreadyUsed)
+		return nil, entities.NewConflictError("email already in use", entities.ErrEmailAlreadyUsed)
 	}
 
 	if err := u.userRepo.Create(ctx, user); err != nil {
@@ -87,22 +86,22 @@ func (u *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req dto.Upda
 	// Use domain entity methods for validation and updates
 	if req.Name != "" {
 		if err := user.UpdateName(req.Name); err != nil {
-			return nil, domain.NewValidationError("invalid name", err)
+			return nil, entities.NewValidationError("invalid name", err)
 		}
 	}
 
 	if req.Email != "" {
 		// Check if email already exists for another user
 		existingUser, err := u.userRepo.GetByEmail(ctx, req.Email)
-		if err != nil && !domain.IsNotFoundError(err) {
+		if err != nil && !entities.IsNotFoundError(err) {
 			return nil, err
 		}
 		if existingUser != nil && existingUser.ID != id {
-			return nil, domain.NewConflictError("email already in use by another user", domain.ErrEmailAlreadyUsed)
-		}
+			return nil, entities.NewConflictError("email already in use by another user", entities.ErrEmailAlreadyUsed)
+
 		
 		if err := user.UpdateEmail(req.Email); err != nil {
-			return nil, domain.NewValidationError("invalid email", err)
+			return nil, entities.NewValidationError("invalid email", err)
 		}
 	}
 
@@ -149,4 +148,6 @@ func (u *UserUsecase) ListUsers(ctx context.Context, limit, offset int) (*dto.Li
 		Limit:  limit,
 		Offset: offset,
 	}, nil
+
+
 }
