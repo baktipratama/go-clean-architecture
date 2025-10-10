@@ -6,7 +6,7 @@ import (
 
 	"go-clean-code/internal/dto"
 	"go-clean-code/internal/entities"
-	
+
 	"go-clean-code/internal/repository"
 
 	"github.com/google/uuid"
@@ -98,8 +98,8 @@ func (u *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req dto.Upda
 		}
 		if existingUser != nil && existingUser.ID != id {
 			return nil, entities.NewConflictError("email already in use by another user", entities.ErrEmailAlreadyUsed)
+		}
 
-		
 		if err := user.UpdateEmail(req.Email); err != nil {
 			return nil, entities.NewValidationError("invalid email", err)
 		}
@@ -148,6 +148,5 @@ func (u *UserUsecase) ListUsers(ctx context.Context, limit, offset int) (*dto.Li
 		Limit:  limit,
 		Offset: offset,
 	}, nil
-
 
 }

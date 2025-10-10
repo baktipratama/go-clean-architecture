@@ -6,12 +6,11 @@ import (
 	"strconv"
 
 	"go-clean-code/internal/dto"
-	"go-clean-code/internal/entities
+	"go-clean-code/internal/entities"
 	"go-clean-code/internal/usecase"
 
 	"github.com/google/uuid"
-
-
+	"github.com/gorilla/mux"
 )
 
 type UserHandler struct {
@@ -45,8 +44,8 @@ func (h *UserHandler) handleError(w http.ResponseWriter, err error) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 	}
-}
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
